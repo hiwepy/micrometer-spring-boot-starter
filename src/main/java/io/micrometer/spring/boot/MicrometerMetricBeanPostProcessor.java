@@ -1,12 +1,18 @@
 package io.micrometer.spring.boot;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.binder.jvm.ExecutorServiceMetrics;
 import io.micrometer.spring.boot.binder.MeterBinderHandler;
 import lombok.extern.slf4j.Slf4j;
+import okhttp3.OkHttpClient;
+import org.springframework.aop.framework.AopProxyUtils;
+import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.BeanPostProcessor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.List;
+import java.util.Objects;
 
 @Slf4j
 public class MicrometerMetricBeanPostProcessor implements BeanPostProcessor {
@@ -19,8 +25,26 @@ public class MicrometerMetricBeanPostProcessor implements BeanPostProcessor {
         return bean;
     }
 
+    public static <T> T unwrap(Object bean, Class<T> target) {
+        if (target.isInstance(bean)) {
+            return target.cast(bean);
+        }
+        if (AopUtils.isAopProxy(bean)) {
+            Object proxyTarget = AopProxyUtils.getSingletonTarget(bean);
+            return unwrap(proxyTarget, target);
+        }
+        return null;
+    }
+
     @Override
     public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
+        ThreadPoolTaskExecutor executor = Util.getThreadPoolTaskExecutor(bean);
+        ThreadPoolTaskExecutor okHttpClient = unwrap(bean, ThreadPoolTaskExecutor.class);
+        if (Objects.nonNull(okHttpClient)) {
+
+        }
+        ExecutorServiceMetrics.monitor(registry, executor, pool.getThreadNamePrefix(),  metricPrefix);
+
 
         if (bean instanceof MetricSet) {
             MetricSet metricSet = (MetricSet) bean;
